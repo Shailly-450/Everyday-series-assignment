@@ -5,32 +5,35 @@ from dotenv import load_dotenv
 
 # Load API keys from .env
 load_dotenv()
-API_KEY = os.getenv("OPENAI_API_KEY")
+GITHUB_API_KEY = os.getenv("GITHUB_API_KEY")
 
 app = FastAPI()
 
-@app.get("/mcp")
-def process_request(query: str):
-    """Handles AI assistant requests via OpenAI API."""
+# ✅ Add this route to verify the server is running
+@app.get("/")
+def root():
+    return {"message": "MCP server is running"}
+
+@app.get("/github-user")
+def get_github_user(username: str):
+    """Fetch GitHub user details using GitHub API."""
     
-    api_url = "https://api.openai.com/v1/chat/completions"
+    if not GITHUB_API_KEY:
+        return {"error": "GitHub API key not found. Set GITHUB_API_KEY in .env"}
+
+    api_url = f"https://api.github.com/users/{username}"
     
     headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": query}]
+        "Authorization": f"token {GITHUB_API_KEY}",
+        "Accept": "application/vnd.github.v3+json"
     }
 
-    response = requests.post(api_url, headers=headers, json=data)
-    
     try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()  # Raises error for bad responses (4xx, 5xx)
         return response.json()
-    except Exception as e:
-        return {"error": "Failed to parse response", "details": str(e)}
+    except requests.exceptions.RequestException as e:
+        return {"error": "GitHub API request failed", "details": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
